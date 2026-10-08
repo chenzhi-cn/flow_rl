@@ -1,0 +1,52 @@
+# OGBench's small state-based SAC network shape, trained here with AWAC.
+experiment:
+  output_dir: runs/cube_awac
+  device: cpu
+  seed: 0
+  torch_threads: 1
+environment:
+  target: flow_rl.envs:make_ogbench_env
+  kwargs:
+    dataset_name: cube-single-play-singletask-task2-v0
+data:
+  source: ogbench
+  dataset_dir: data/ogbench
+  normalize_observations: true
+model:
+  target: flow_rl.models:GaussianChunkPolicy
+  chunk_size: 1
+  kwargs:
+    hidden_dims: [256, 256]
+    state_dependent_std: true
+value:
+  target: flow_rl.models:EnsembleQ
+  kwargs:
+    hidden_dims: [256, 256]
+    num_qs: 2
+    layer_norm: false
+algorithm:
+  target: flow_rl.algorithms:AWAC
+  kwargs:
+    actor_lr: 0.0003
+    critic_lr: 0.0003
+    temperature: 1.0
+    tau: 0.005
+    max_weight: 100.0
+    num_value_samples: 1
+training:
+  mode: offline_rl
+  steps: 10000
+  batch_size: 256
+  gamma: 0.99
+  log_interval: 100
+  checkpoint_interval: 5000
+inference:
+  control_dt: 0.05
+  refresh_steps: 1
+  stitching: replace
+  smoothing: none
+  asynchronous: false
+  realtime: false
+evaluation:
+  episodes: 5
+  max_steps: 200

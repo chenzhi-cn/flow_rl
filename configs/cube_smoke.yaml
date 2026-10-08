@@ -1,0 +1,21 @@
+# Uses the real OGBench simulator, but randomly collected data ONLY for validation.
+extends: cube_awac_chunk.yaml
+experiment:
+  output_dir: runs/cube_smoke
+data:
+  source: random
+  random_steps: 240
+model:
+  kwargs:
+    hidden_dims: [64, 64]
+value:
+  kwargs:
+    hidden_dims: [64, 64]
+training:
+  steps: 20
+  batch_size: 32
+  log_interval: 10
+  checkpoint_interval: 0
+evaluation:
+  episodes: 1
+  max_steps: 30

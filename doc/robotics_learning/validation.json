@@ -1,0 +1,113 @@
+{
+  "date": "2026-09-30",
+  "platform": "macOS-26.6.2-arm64-arm-64bit",
+  "python": "3.10.6",
+  "packages": {
+    "torch": "2.14.0",
+    "ogbench": "1.2.1",
+    "mujoco": "3.14.0",
+    "gymnasium": "1.3.0",
+    "numpy": "2.2.6"
+  },
+  "tests": {
+    "passed": 50,
+    "includes_real_ogbench_integration": true
+  },
+  "checks": [
+    "uv sync --locked --offline",
+    "ruff check src tests",
+    "ruff format --check src tests"
+  ],
+  "runs": {
+    "cube_awac": {
+      "checkpoint": "runs/cube_awac/checkpoint.pt",
+      "step": 10000,
+      "data_source": "ogbench",
+      "dataset_transitions": 1000000,
+      "dataset_windows": 1000000,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 1,
+      "actor_parameters": 75786,
+      "device": "cpu",
+      "episodes": 5,
+      "return_mean": -200.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 200.0,
+      "control_call_ms_mean": 0.06044309271965176,
+      "control_call_ms_p95": 0.0670420122332871
+    },
+    "verify_official_chunk": {
+      "checkpoint": "runs/verify_official_chunk/checkpoint.pt",
+      "step": 1000,
+      "data_source": "ogbench",
+      "dataset_transitions": 1000000,
+      "dataset_windows": 997000,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 4,
+      "actor_parameters": 83496,
+      "device": "cpu",
+      "episodes": 5,
+      "return_mean": -200.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 200.0,
+      "control_call_ms_mean": 0.055272313591558486,
+      "control_call_ms_p95": 0.09054307010956109
+    },
+    "cube_smoke": {
+      "checkpoint": "runs/cube_smoke/checkpoint.pt",
+      "step": 20,
+      "data_source": "random",
+      "dataset_transitions": 240,
+      "dataset_windows": 234,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 4,
+      "actor_parameters": 8616,
+      "device": "cpu",
+      "episodes": 1,
+      "return_mean": -30.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 30.0,
+      "control_call_ms_mean": 0.05890970933251083,
+      "control_call_ms_p95": 0.10335829574614762
+    },
+    "verify_bc": {
+      "checkpoint": "runs/verify_bc/checkpoint.pt",
+      "step": 10,
+      "data_source": "random",
+      "dataset_transitions": 100,
+      "dataset_windows": 97,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 4,
+      "actor_parameters": 83496,
+      "device": "cpu",
+      "episodes": 1,
+      "return_mean": -20.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 20.0,
+      "control_call_ms_mean": 0.08447075088042766,
+      "control_call_ms_p95": 0.1540478784590963
+    },
+    "verify_online": {
+      "checkpoint": "runs/verify_online/checkpoint.pt",
+      "step": 60,
+      "data_source": "none",
+      "dataset_transitions": 0,
+      "dataset_windows": 0,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 1,
+      "actor_parameters": 75786,
+      "device": "cpu",
+      "episodes": 1,
+      "return_mean": -20.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 20.0,
+      "control_call_ms_mean": 0.07653340289834887,
+      "control_call_ms_p95": 0.13176665233913812
+    }
+  }
+}

@@ -1,0 +1,39 @@
+[project]
+name = "flow-rl"
+version = "0.1.0"
+description = "A modular robotics framework for supervised, offline and online policy learning"
+readme = "README.md"
+authors = [
+    { name = "zhi", email = "chenzhi.2011@tsinghua.org.cn" }
+]
+requires-python = ">=3.10.6"
+dependencies = [
+    "dm-control>=1.0.47",
+    "gymnasium>=1.3.0",
+    "mujoco>=3.14.0",
+    "numpy>=1.26",
+    "ogbench>=1.2.1",
+    "pyyaml>=6,<7",
+    "torch>=2.6,<3",
+]
+
+[project.scripts]
+flow-rl = "flow_rl:main"
+
+[build-system]
+requires = ["uv_build>=0.12.19,<0.13.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "pytest>=8,<9",
+    "ruff>=0.11",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: requires the MuJoCo simulator"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100

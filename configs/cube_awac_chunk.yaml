@@ -1,0 +1,11 @@
+extends: cube_awac.yaml
+experiment:
+  output_dir: runs/cube_awac_chunk
+model:
+  chunk_size: 4
+inference:
+  refresh_steps: 2
+  stitching: ensemble
+  smoothing: ema
+  ema_alpha: 0.7
+  ensemble_decay: 0.5
