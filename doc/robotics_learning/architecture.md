@@ -4,6 +4,8 @@
 
 当前基线使用 OGBench `cube-single-play-singletask-task2-v0`、状态 MLP 和 AWAC。策略默认两层 256 单元的 GELU MLP，采用 OGBench 小型状态网络的规模，在本项目中用 PyTorch 实现；不包含 OGBench 预训练权重。单任务环境的 observation 为 28 维，action 为 5 维，控制周期为 0.05 秒，回合上限为 200 步。
 
+与 MLP 并列的 `DiffusionChunkPolicy`、公共每样本损失接口和精确参数预算见 [Diffusion 与参数预算](diffusion_and_parameter_budget.md)。下文的 Gaussian likelihood 公式描述原 MLP 路径；flow policy 使用独立标记的 flow-matching 目标。
+
 ## 1. 模块边界
 
 ```mermaid
@@ -160,7 +162,7 @@ y_t=R_t^{(H)}+D_t^{(H)}\min_jQ_{\bar\phi_j}(s_{t+H},u'),
 | `training.mode` | 算法与数据 | 当前行为 |
 | --- | --- | --- |
 | `offline_rl` | AWAC + OGBench / NPZ | 只从固定数据更新参数 |
-| `supervised` | BC + OGBench / NPZ | 最大化数据动作的似然，不构造 critic |
+| `supervised` | BC + OGBench / NPZ | Gaussian 使用 NLL，diffusion 使用 flow MSE，不构造 critic |
 | `online_rl` | AWAC + 在线 replay，可选离线数据 | 随机 warmup 后采样策略 chunk，依次执行；按 `offline_ratio` 混合数据 |
 
 切换 BC 需要同时修改 mode 与 `algorithm.target`；配置校验会拒绝 supervised 与需要 critic 的算法混用。在线训练记录真正执行的动作和观测 transition。当前在线采集按完整 chunk 顺序执行，评估/部署使用独立的时延 controller；在线采集暂未通过异步推理 runner 调度。
@@ -300,9 +302,9 @@ class VLAChunkAdapter(ChunkPolicy):
         return np.clip(2 * (actions - self.low) / (self.high - self.low) - 1, -1, 1)
 ```
 
-将实例交给 `flow_rl.evaluation.make_runner(policy, config, action_dim)` 即可复用时延、拼接和平滑。循环中调用 `runner.act(observation)`，再还原动作单位后 `env.step`。这条直接 Python 推理路径可以传入字典 observation；当前基于 checkpoint 的 CLI 和内置模型构造仍面向可训练状态 MLP。
+将实例交给 `flow_rl.evaluation.make_runner(policy, config, action_dim)` 即可复用时延、拼接和平滑。循环中调用 `runner.act(observation)`，再还原动作单位后 `env.step`。这条直接 Python 推理路径可以传入字典 observation；当前基于 checkpoint 的 CLI 和内置模型构造面向状态 MLP / diffusion。
 
-PI0.5 等 VLA 模型本体、权重、服务客户端、训练和数据转换尚未实现。上面的 `infer_fn` 是明确的接入位置。只实现 `predict` 的远程服务不能直接参加 AWAC/BC 梯度训练；可训练策略还必须提供 `sample`、`log_prob`、参数和状态接口，并满足 PyTorch 构造流程。
+内置最小状态 diffusion 动作头借鉴 PI0.5 的 flow-matching 思路。完整 VLA 模型、官方权重、服务客户端和多模态数据转换仍需接入。上面的 `infer_fn` 是扩展位置。只实现 `predict` 的远程服务不能直接参加 AWAC/BC 梯度训练；可训练策略还需提供 `sample`、`per_sample_loss`、参数和状态接口。旧 Gaussian 插件的 `log_prob` 接口继续兼容。
 
 ### 世界模型接口
 

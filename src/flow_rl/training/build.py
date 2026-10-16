@@ -6,6 +6,7 @@ import torch
 from flow_rl.config import Config
 from flow_rl.data import TransitionDataset, collect_random_dataset, load_npz, load_ogbench_dataset
 from flow_rl.factory import instantiate, resolve
+from flow_rl.models.budget import build_model
 
 
 def setup(config: Config) -> torch.device:
@@ -81,18 +82,23 @@ def load_data(config: Config, env) -> TransitionDataset | None:
     return dataset
 
 
-def build_actor(config: Config, observation_dim: int, action_dim: int, device):
-    return instantiate(
+def build_actor(config: Config, observation_dim: int, action_dim: int, device, build_spec=None):
+    return build_model(
         config.model.target,
         config.model.kwargs,
+        parameter_budget=config.model.parameter_budget,
+        build_spec=build_spec,
         observation_dim=observation_dim,
         action_dim=action_dim,
         chunk_size=config.model.chunk_size,
     ).to(device)
 
 
-def build_algorithm(config: Config, observation_dim: int, action_dim: int, device, dataset=None):
-    actor = build_actor(config, observation_dim, action_dim, device)
+def build_algorithm(
+    config: Config, observation_dim: int, action_dim: int, device, dataset=None, build_specs=None
+):
+    build_specs = build_specs or {}
+    actor = build_actor(config, observation_dim, action_dim, device, build_specs.get("actor_spec"))
     algorithm_cls = resolve(config.algorithm.target)
     requires_critic = getattr(algorithm_cls, "requires_critic", True)
     if (config.training.mode == "supervised") == requires_critic:
@@ -101,9 +107,11 @@ def build_algorithm(config: Config, observation_dim: int, action_dim: int, devic
         )
     components = {"actor": actor}
     if requires_critic:
-        components["critic"] = instantiate(
+        components["critic"] = build_model(
             config.value.target,
             config.value.kwargs,
+            parameter_budget=config.value.parameter_budget,
+            build_spec=build_specs.get("critic_spec"),
             observation_dim=observation_dim,
             action_dim=action_dim,
             chunk_size=config.model.chunk_size,

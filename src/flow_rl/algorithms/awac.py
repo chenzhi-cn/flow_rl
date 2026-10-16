@@ -11,11 +11,21 @@ from typing import Any
 import torch
 from torch import nn
 
-from flow_rl.algorithms.base import Batch, optimizer_step
+from flow_rl.algorithms.base import (
+    Batch,
+    actor_training_loss,
+    optimizer_step,
+    policy_objective,
+    validate_checkpoint_objective,
+)
 
 
 class AWAC:
-    """Double-Q TD learning and advantage-weighted maximum likelihood.
+    """Double-Q TD learning with an advantage-weighted policy objective.
+
+    Gaussian policies use the original AWAC maximum-likelihood objective. Flow
+    policies use advantage-weighted flow matching, a regression surrogate rather
+    than exact likelihood AWAC. The Q target and advantage computation are shared.
 
     `discounts` is already gamma**H times the bootstrap mask, and `rewards`
     is the discounted H-step return. Neither is discounted a second time.
@@ -97,8 +107,9 @@ class AWAC:
         optimizer_step(critic_loss, self.critic_optimizer, self.critic, self.max_grad_norm)
 
         weights, advantages = self.compute_weights(batch)
-        log_probs = self.actor.log_prob(batch["observations"], batch["actions"])
-        actor_loss = -(weights * log_probs).mean()
+        actor_loss, actor_metrics = actor_training_loss(
+            self.actor, batch["observations"], batch["actions"], weights
+        )
         optimizer_step(actor_loss, self.actor_optimizer, self.actor, self.max_grad_norm)
         self._update_target()
         self.num_updates += 1
@@ -107,15 +118,16 @@ class AWAC:
             "critic_loss": float(critic_loss.detach()),
             "q_mean": float(qs.detach().mean()),
             "target_q_mean": float(targets.mean()),
-            "advantage_mean": float(advantages.mean()),
-            "weight_mean": float(weights.mean()),
-            "weight_max": float(weights.max()),
-            "log_prob_mean": float(log_probs.detach().mean()),
+            "advantage_mean": float(advantages.detach().mean()),
+            "weight_mean": float(weights.detach().mean()),
+            "weight_max": float(weights.detach().max()),
+            **actor_metrics,
         }
 
     def state_dict(self) -> dict[str, Any]:
         return {
             "algorithm": "awac",
+            "actor_objective": policy_objective(self.actor),
             "actor": self.actor.state_dict(),
             "critic": self.critic.state_dict(),
             "target_critic": self.target_critic.state_dict(),
@@ -134,6 +146,7 @@ class AWAC:
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
         if state["algorithm"] != "awac":
             raise ValueError("Expected an AWAC checkpoint")
+        validate_checkpoint_objective(self.actor, state)
         self.actor.load_state_dict(state["actor"])
         self.critic.load_state_dict(state["critic"])
         self.target_critic.load_state_dict(state["target_critic"])

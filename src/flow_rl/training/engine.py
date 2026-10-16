@@ -6,8 +6,9 @@ from pathlib import Path
 
 from flow_rl.config import Config, save_config
 from flow_rl.evaluation import evaluate
+from flow_rl.models.budget import algorithm_parameter_report
 from flow_rl.training.build import build_algorithm, load_data, make_env, setup
-from flow_rl.training.checkpoints import restore_training, save_checkpoint
+from flow_rl.training.checkpoints import read_checkpoint, restore_training, save_checkpoint
 from flow_rl.training.metrics import write_metrics
 from flow_rl.training.offline import train_offline
 from flow_rl.training.online import train_online
@@ -29,7 +30,10 @@ def train(config: Config, resume=None, init_from=None) -> dict:
         dataset = load_data(config, env)
         observation_dim = env.observation_space.shape[0]
         action_dim = env.action_space.shape[0]
-        algorithm = build_algorithm(config, observation_dim, action_dim, device, dataset)
+        saved = read_checkpoint(resume or init_from) if resume or init_from else None
+        algorithm = build_algorithm(
+            config, observation_dim, action_dim, device, dataset, build_specs=saved
+        )
         start_step = (
             restore_training(resume or init_from, config, algorithm, dataset, bool(resume))
             if resume or init_from
@@ -43,7 +47,7 @@ def train(config: Config, resume=None, init_from=None) -> dict:
             "observation_dim": observation_dim,
             "action_dim": action_dim,
             "chunk_size": config.model.chunk_size,
-            "actor_parameters": sum(p.numel() for p in algorithm.actor.parameters()),
+            **algorithm_parameter_report(algorithm),
             "device": str(device),
         }
         (output / "metadata.json").write_text(json.dumps(metadata, indent=2))

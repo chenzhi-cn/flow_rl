@@ -1,0 +1,147 @@
+{
+  "date": "2026-10-16",
+  "purpose": "Manifold tool correctness and full official-data inference verification; not a model-quality benchmark",
+  "sample_path": "runs/manifold_cube/samples.npz",
+  "sample_bytes": 4383051,
+  "sample_id": "71cd26f105740424f69e251aa91d1906356fc8bf488a849bc5164ff5cdae62c6",
+  "sample_file_sha256": "6e2dde24645e775947ba7bdbbc84dd9977ab967eb37cbbee5bd636c327275db8",
+  "report_path": "runs/manifold_cube/comparison/report.json",
+  "report_file_sha256": "10fdc1a64a72aa5d57fb40f1d3f31743acb73eb6db6bb44fd4c68890b7d061c2",
+  "preparation": {
+    "action_metric": "raw",
+    "chunk_size": 4,
+    "n_critical": 100,
+    "neighbors": 8,
+    "noise_scale": 0.1,
+    "observation_metric": "raw",
+    "perturbations_per_state": 64,
+    "query_batch_size": 64,
+    "reference_batch_size": 8192,
+    "seed": 0,
+    "std_floor": 1e-06,
+    "svd_rcond": 1e-06,
+    "window_after": 8,
+    "window_before": 8
+  },
+  "reference_transitions": 1000000,
+  "evaluation_transitions": 100000,
+  "reference_full_chunks": 997000,
+  "sample_count": 6400,
+  "clipped_perturbation_count": 1384,
+  "restoration_statistics": {
+    "contact_max_abs_error": 0.0,
+    "observation_max_abs_error": 0.007620811462402344,
+    "observation_max_abs_error_excluding_contact": 0.007620811462402344,
+    "observation_rmse": 0.0015570625851534638,
+    "restore_calls": 6600,
+    "unique_states": 100
+  },
+  "historical_nominal_next_observation_l2": {
+    "mean": 0.06223297119140625,
+    "max": 0.23797953128814697
+  },
+  "reuse_verified_without_simulator": true,
+  "tests": {
+    "non_integration_passed": 248,
+    "integration_passed": 2,
+    "total_passed": 250,
+    "manifold_specific_passed": 68
+  },
+  "checks": {
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "git_diff_check": "passed"
+  },
+  "models": {
+    "mlp": {
+      "checkpoint": "/Users/zhi/project/flow_rl/runs/verify_mlp_matched_20261015/checkpoint.pt",
+      "checkpoint_sha256": "d763cabb3082d81a1bef8e9ef30b99461df31f281247f77553a3686a9bfd57f0",
+      "training_updates": 30,
+      "metrics": {
+        "off_manifold_norm": {
+          "mean": 0.4565814332562344,
+          "std": 0.22575043178860862,
+          "rms": 0.5093425788671712,
+          "median": 0.3651003309080376,
+          "p95": 0.935115273686961,
+          "min": 0.17488714994983584,
+          "max": 1.1351997170960135
+        },
+        "on_manifold_norm": {
+          "mean": 0.413182394588202,
+          "std": 0.23330579566630955,
+          "rms": 0.4745010911358692,
+          "median": 0.33057203459808415,
+          "p95": 0.9854358086083878,
+          "min": 0.13689978984338136,
+          "max": 1.215743888057538
+        },
+        "total_norm": {
+          "mean": 0.6218461474217759,
+          "std": 0.31287140660802815,
+          "rms": 0.6961186307923319,
+          "median": 0.4948615748183076,
+          "p95": 1.345059765568291,
+          "min": 0.26238024158835394,
+          "max": 1.5900417014227837
+        }
+      },
+      "geometry": {
+        "vector_dimension": 20,
+        "neighbors": 8,
+        "rank_min": 8,
+        "rank_max": 8,
+        "rank_mean": 8.0,
+        "full_rank_fraction": 0.0,
+        "zero_rank_fraction": 0.0,
+        "pythagorean_max_absolute_error": 3.552713678800501e-15
+      },
+      "deterministic": true
+    },
+    "diffusion": {
+      "checkpoint": "/Users/zhi/project/flow_rl/runs/verify_diffusion_matched_20261015/checkpoint.pt",
+      "checkpoint_sha256": "0ac05d61d86485941d2df55763a84a490cfc262921384553ba0270c13f3798bb",
+      "training_updates": 30,
+      "metrics": {
+        "off_manifold_norm": {
+          "mean": 2.0689580721153504,
+          "std": 0.27071066623890294,
+          "rms": 2.0865933405881414,
+          "median": 2.0833496009911947,
+          "p95": 2.5704693815526944,
+          "min": 1.1552197098635268,
+          "max": 2.8037772645274597
+        },
+        "on_manifold_norm": {
+          "mean": 2.1647233333848264,
+          "std": 0.27120415357424493,
+          "rms": 2.181645893131293,
+          "median": 2.1760218921922987,
+          "p95": 2.5709797773300376,
+          "min": 1.087715783482015,
+          "max": 2.7961903153125314
+        },
+        "total_norm": {
+          "mean": 3.018740334055398,
+          "std": 0.025639179989219354,
+          "rms": 3.018849213194229,
+          "median": 3.0207288961008576,
+          "p95": 3.0552087808558137,
+          "min": 2.933227171814137,
+          "max": 3.065766045440973
+        }
+      },
+      "geometry": {
+        "vector_dimension": 20,
+        "neighbors": 8,
+        "rank_min": 8,
+        "rank_max": 8,
+        "rank_mean": 8.0,
+        "full_rank_fraction": 0.0,
+        "zero_rank_fraction": 0.0,
+        "pythagorean_max_absolute_error": 1.9539925233402755e-14
+      },
+      "deterministic": true
+    }
+  }
+}

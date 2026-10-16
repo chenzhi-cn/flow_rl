@@ -37,6 +37,7 @@ class DataConfig:
 class ModelConfig:
     target: str = "flow_rl.models:GaussianChunkPolicy"
     chunk_size: int = 1
+    parameter_budget: int | None = None
     kwargs: dict = field(
         default_factory=lambda: {"hidden_dims": [256, 256], "state_dependent_std": True}
     )
@@ -45,6 +46,7 @@ class ModelConfig:
 @dataclass
 class ValueConfig:
     target: str = "flow_rl.models:EnsembleQ"
+    parameter_budget: int | None = None
     kwargs: dict = field(
         default_factory=lambda: {"hidden_dims": [256, 256], "num_qs": 2, "layer_norm": False}
     )
@@ -106,6 +108,12 @@ class Config:
         return asdict(self)
 
     def validate(self) -> None:
+        for section in ("model", "value"):
+            budget = getattr(self, section).parameter_budget
+            if budget is not None and (
+                isinstance(budget, bool) or not isinstance(budget, int) or budget < 1
+            ):
+                raise ValueError(f"{section}.parameter_budget must be a positive integer or null")
         if self.training.mode not in {"offline_rl", "online_rl", "supervised"}:
             raise ValueError("training.mode must be offline_rl, online_rl or supervised")
         if self.data.source not in {"ogbench", "npz", "random", "none"}:

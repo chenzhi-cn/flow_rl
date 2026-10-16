@@ -1,0 +1,8 @@
+# Exact matched model capacity: 100k actor + 200k critics = 300k trainables.
+extends: cube_awac_chunk.yaml
+experiment:
+  output_dir: runs/cube_mlp_matched
+model:
+  parameter_budget: 100000
+value:
+  parameter_budget: 200000

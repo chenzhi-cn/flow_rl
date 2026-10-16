@@ -1,4 +1,4 @@
-"""Maximum-likelihood behavioral cloning with the same policy contract as AWAC."""
+"""Behavioral cloning using a policy's likelihood or flow-matching objective."""
 
 from collections.abc import Mapping
 from typing import Any
@@ -6,7 +6,13 @@ from typing import Any
 import torch
 from torch import nn
 
-from flow_rl.algorithms.base import Batch, optimizer_step
+from flow_rl.algorithms.base import (
+    Batch,
+    actor_training_loss,
+    optimizer_step,
+    policy_objective,
+    validate_checkpoint_objective,
+)
 
 
 class BC:
@@ -22,18 +28,20 @@ class BC:
 
     def update(self, batch: Batch) -> dict[str, float]:
         self.actor.train()
-        log_probs = self.actor.log_prob(batch["observations"], batch["actions"])
-        loss = -log_probs.mean()
+        loss, actor_metrics = actor_training_loss(
+            self.actor, batch["observations"], batch["actions"]
+        )
         optimizer_step(loss, self.actor_optimizer, self.actor, self.max_grad_norm)
         self.num_updates += 1
         return {
             "actor_loss": float(loss.detach()),
-            "log_prob_mean": float(log_probs.detach().mean()),
+            **actor_metrics,
         }
 
     def state_dict(self) -> dict[str, Any]:
         return {
             "algorithm": "bc",
+            "actor_objective": policy_objective(self.actor),
             "actor": self.actor.state_dict(),
             "actor_optimizer": self.actor_optimizer.state_dict(),
             "max_grad_norm": self.max_grad_norm,
@@ -43,6 +51,7 @@ class BC:
     def load_state_dict(self, state: Mapping[str, Any]) -> None:
         if state["algorithm"] != "bc":
             raise ValueError("Expected a BC checkpoint")
+        validate_checkpoint_objective(self.actor, state)
         self.actor.load_state_dict(state["actor"])
         self.actor_optimizer.load_state_dict(state["actor_optimizer"])
         self.max_grad_norm = state["max_grad_norm"]

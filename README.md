@@ -2,7 +2,7 @@
 
 轻量、模块化的 robotics 训练框架。第一条完整路径是 **OGBench single-cube → 官方离线数据 → AWAC → checkpoint → action chunk 推理**。
 
-当前内置 PyTorch 状态 MLP、AWAC、BC、在线 replay、OGBench/Gymnasium 环境，以及可替换的 chunk 拼接和平滑。模型、value、算法和环境通过 `module:factory` 配置扩展。
+当前内置 PyTorch 状态 MLP、π0.5 风格的最小 flow-matching action expert、AWAC、BC、在线 replay、OGBench/Gymnasium 环境，以及可替换的 chunk 拼接和平滑。模型、value、算法和环境通过 `module:factory` 配置扩展。
 
 ## 快速开始
 
@@ -40,6 +40,10 @@ uv run flow-rl evaluate --checkpoint runs/cube_smoke/checkpoint.pt
 | `configs/cube_bc.yaml` | Supervised | 相同 chunk actor，BC 最大似然训练，无 critic |
 | `configs/cube_online.yaml` | Online RL | 环境采样、环形 replay，默认混入 50% 官方离线数据 |
 | `configs/cube_smoke.yaml` | Offline RL | 随机仿真数据，快速检查执行链路 |
+| `configs/cube_mlp_matched.yaml` | Offline RL | MLP，actor 精确 100,000 参数、critic 精确 200,000 参数 |
+| `configs/cube_diffusion_matched.yaml` | Offline RL | 相同参数预算的 Transformer flow policy，优势加权 flow matching |
+| `configs/cube_diffusion_bc.yaml` | Supervised | Flow-matching 监督训练，无 critic |
+| `configs/cube_diffusion_smoke.yaml` | Offline RL | 真实仿真随机数据，快速验证 diffusion 训练与推理 |
 
 配置支持相对路径 `extends` 继承与 `--set section.key=value` 覆盖。实验、数据和输出路径相对当前工作目录；从项目根目录运行上述命令。
 
@@ -86,6 +90,42 @@ runs/<experiment>/
 
 ## Chunk 推理与时延
 
+### MLP / Diffusion 切换与参数量对齐
+
+两种策略均输入 `[B, observation_dim]`，输出 `[B, H, action_dim]`；单条 `predict` 输出 `[H, action_dim]`。single-cube 对照配置均为 `28 → [4, 5]`。
+
+`DiffusionChunkPolicy` 使用小型 Transformer、时间条件 RMSNorm 和 flow matching，通过多次 Euler 更新将高斯噪声变为动作。设计参考 [OpenPI 的 π0.5 flow head](https://github.com/Physical-Intelligence/openpi/blob/main/src/openpi/models/pi0.py)；这里是从零训练的状态版本，未包含视觉语言骨干或官方权重。
+
+```yaml
+model:
+  target: flow_rl.models:DiffusionChunkPolicy  # 或 GaussianChunkPolicy
+  chunk_size: 4
+  parameter_budget: 100000
+value:
+  parameter_budget: 200000
+```
+
+参数预算默认 `null`，原有配置的网络结构保持原样。启用后自动选择宽度，并用参与前向计算的固定稀疏连接精确达到预算；不存在用于凑数的闲置 Parameter。统计包括权重与 bias，排除归一化统计量等 buffer。无法满足的预算会报错。对照配置的可训练参数均为 **300,000**；加上冻结的 target critic 均为 **500,000**。
+
+```bash
+# 无需仿真、数据下载即可检查结构和精确参数量
+uv run flow-rl inspect-model --config configs/cube_mlp_matched.yaml \
+  --observation-dim 28 --action-dim 5
+uv run flow-rl inspect-model --config configs/cube_diffusion_matched.yaml \
+  --observation-dim 28 --action-dim 5
+
+# 训练与推理复用相同入口
+uv run flow-rl train --config configs/cube_diffusion_smoke.yaml
+uv run flow-rl train --config configs/cube_diffusion_matched.yaml
+uv run flow-rl evaluate --checkpoint runs/cube_diffusion_matched/checkpoint.pt
+```
+
+Gaussian 使用真实 NLL；diffusion 使用 `per_sample_loss` 提供的 flow MSE。选择 AWAC 时，diffusion 的 actor 采用 **advantage-weighted flow-matching surrogate**，不是标准 AWAC 的精确 log-likelihood 目标。日志和 checkpoint 会记录这个区别。等参数量不代表等 FLOPs 或推理时延；diffusion 默认做 10 次模型调用。
+
+完整公式、预算规则与扩展接口见 [Diffusion 与参数预算说明](doc/robotics_learning/diffusion_and_parameter_budget.md)。
+
+### 执行控制
+
 策略统一输出 `[H, action_dim]`。`ChunkController` 与模型解耦：
 
 - `replace` 使用最新有效预测；`ensemble` 融合同一执行时间上的重叠预测，按预测年龄指数加权。
@@ -102,25 +142,60 @@ uv run flow-rl evaluate --checkpoint runs/cube_awac_chunk/checkpoint.pt \
 
 实时模式需要 `H >= 2`，并确保 chunk 总时长足以覆盖推理延迟和刷新间隔。H=1 与延迟向上取整不兼容，配置会直接报错。`control_call_ms_*` 是调用控制器获得动作的耗时；异步模式下它不等于后台模型完整推理耗时。当前执行器适合仿真和接口验证，没有硬实时调度保证。
 
+## 可塑性检测
+
+用一行 hook 选择被测层，独立统计死亡比例、休眠比例（默认激活频率低于 1%）、全模型平均权重绝对值、常规 stable rank 和谱熵 effective rank：
+
+```python
+from flow_rl.diagnostics import PlasticityMonitor
+
+probe = PlasticityMonitor(model, layer="net.3")
+# 正常执行模型；train 模式仅保留当前 batch，eval 模式累计所有 batch
+model(observations)
+print(probe.summary())  # 全部样本结果，以及按样本数加权的 batch 均值
+probe.close()
+```
+
+也支持在 forward 中手动插入 `h = probe(h)`。每轮评估前调用 `probe.reset()`；Transformer/CNN 可指定特征维，权重范围与激活判据可配置。
+
+```bash
+uv run python examples/plasticity_diagnostics.py --output runs/plasticity_demo.json
+```
+
+该示例运行 MLP/diffusion 的训练与全数据集检测，无需仿真。完整公式、参数筛选、聚合语义与接入方式见 [可塑性检测说明](doc/robotics_learning/plasticity_diagnostics.md)。
+
+## Manifold adherence 评估
+
+独立工具按 validation 轨迹窗口内的 action 方差选择 critical states，扰动其 action 后通过仿真生成新 states，固定保存样本、训练集近邻及投影基。之后可复用同一文件比较 MLP、diffusion 或外部模型的 off-manifold、on-manifold、total norm：
+
+```bash
+uv run python -m flow_rl.manifold prepare --config configs/manifold/cube.yaml
+uv run python -m flow_rl.manifold compare --config configs/manifold/cube.yaml
+```
+
+配置中的 checkpoint 路径需要对应已完成的训练。生成配置改变时使用新样本文件；比较阶段无需 simulator。指标公式、论文/代码对应关系、外部模型接入和恢复误差说明见 [Manifold adherence 工具](doc/robotics_learning/manifold_adherence.md)。
+
 ## 模块与扩展
 
 ```text
 src/flow_rl/
   config.py             # YAML、继承、校验、覆盖
   factory.py            # module:factory 插件加载
-  models/               # MLP chunk actor、Q ensemble、模型协议
+  models/               # MLP / diffusion actor、精确参数预算、Q ensemble、模型协议
   algorithms/           # 独立 AWAC / BC 更新逻辑
   envs/                 # 统一协议、OGBench、Gym、RobotTransport
   data/                 # 离线 chunk 采样、NPZ、在线 replay
   inference/            # 时间对齐、拼接、平滑、同步/异步执行
   training/             # 构建、训练循环、checkpoint、指标
+  diagnostics/          # 独立可塑性检测、流式全数据集统计
+  manifold/             # 固定扰动样本、近邻 action span、模型几何评估
   evaluation.py         # 统一 rollout
   cli.py                # train / evaluate / collect / check-config
 ```
 
 扩展实例及协议见 [架构与开发指南](doc/robotics_learning/architecture.md)。
 
-- **VLA / π0.5**：已有 `ChunkPolicy.predict(observation)` 协议，推理 runner 可接收图像、状态、指令组成的字典。需要实现具体模型 adapter，加载对应权重和预处理。
+- **VLA / π0.5**：内置最小状态 flow-matching 动作头；完整 VLA 仍需模型 adapter、权重和图像/语言预处理。`ChunkPolicy.predict(observation)` 与推理 runner 可接收图像、状态、指令组成的字典。
 - **世界模型**：已有 `WorldModel.rollout` 协议；模型实现和基于模型的 RL 算法尚未接入。
 - **其他仿真器**：可用 `make_gym_env`，或提供统一 reset/step 工厂。
 - **Franka / 方舟无限等真机**：已有 `RobotTransport` / `RobotEnv` 边界，需要针对实际 SDK 实现 transport、任务 reward、控制频率与硬件保护。当前没有厂商驱动或真机验证。

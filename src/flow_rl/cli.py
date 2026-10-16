@@ -9,7 +9,7 @@ from flow_rl.config import load_config
 def parser():
     root = argparse.ArgumentParser(description="Modular robotics training and chunk inference")
     sub = root.add_subparsers(dest="command", required=True)
-    for name in ("train", "evaluate", "check-config", "collect"):
+    for name in ("train", "evaluate", "check-config", "collect", "inspect-model"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--config", required=name != "evaluate")
         cmd.add_argument(
@@ -29,6 +29,9 @@ def parser():
         elif name == "collect":
             cmd.add_argument("--output", required=True)
             cmd.add_argument("--steps", type=int, default=400)
+        elif name == "inspect-model":
+            cmd.add_argument("--observation-dim", type=int, required=True)
+            cmd.add_argument("--action-dim", type=int, required=True)
     return root
 
 
@@ -58,6 +61,13 @@ def main():
         config = load_config(args.config, args.overrides)
         if args.command == "check-config":
             result = config.to_dict()
+        elif args.command == "inspect-model":
+            from flow_rl.models.budget import algorithm_parameter_report
+            from flow_rl.training.build import build_algorithm, setup
+
+            device = setup(config)
+            algorithm = build_algorithm(config, args.observation_dim, args.action_dim, device)
+            result = algorithm_parameter_report(algorithm)
         elif args.command == "collect":
             from flow_rl.data import collect_random_dataset, save_npz
             from flow_rl.training.build import make_env, setup

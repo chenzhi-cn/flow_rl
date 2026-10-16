@@ -21,11 +21,20 @@ class ChunkPolicy(Protocol):
 
 
 class TrainableChunkPolicy(Protocol):
-    """AWAC/BC additionally require differentiable likelihoods and model state."""
+    """AWAC/BC use a named, differentiable per-example policy objective.
+
+    Likelihood policies return negative log probability. Flow policies return a
+    flow-matching regression loss; that loss is not a tractable log likelihood.
+    Algorithms also accept older plugins exposing only log_prob.
+    """
+
+    training_objective: str
 
     def sample(self, observations: torch.Tensor, deterministic: bool = False) -> torch.Tensor: ...
 
-    def log_prob(self, observations: torch.Tensor, actions: torch.Tensor) -> torch.Tensor: ...
+    def per_sample_loss(self, observations: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
+        """Return one differentiable scalar per example, shaped [batch]."""
+        ...
 
     def parameters(self, recurse: bool = True): ...
 

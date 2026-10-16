@@ -17,6 +17,8 @@ def save_checkpoint(path, config, algorithm, step, observation_dim, action_dim, 
         "action_dim": action_dim,
         "algorithm": algorithm.state_dict(),
         "actor": algorithm.actor.state_dict(),
+        "actor_spec": getattr(algorithm.actor, "build_spec", None),
+        "critic_spec": getattr(getattr(algorithm, "critic", None), "build_spec", None),
         "torch_rng_state": torch.get_rng_state(),
         "cuda_rng_state": torch.cuda.get_rng_state_all() if torch.cuda.is_available() else [],
         "dataset_rng_state": dataset.rng.bit_generator.state if dataset is not None else None,
@@ -63,7 +65,13 @@ def restore_training(path, config: Config, algorithm, dataset, resume: bool) -> 
 def load_policy(path, device="cpu"):
     saved = read_checkpoint(path)
     config = from_dict(saved["config"])
-    actor = build_actor(config, saved["observation_dim"], saved["action_dim"], device)
+    actor = build_actor(
+        config,
+        saved["observation_dim"],
+        saved["action_dim"],
+        device,
+        build_spec=saved.get("actor_spec"),
+    )
     actor.load_state_dict(saved["actor"])
     actor.eval()
     return actor, config

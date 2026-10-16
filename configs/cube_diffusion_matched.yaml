@@ -1,0 +1,14 @@
+# PI0.5-inspired state-only flow-matching action expert.
+# AWAC critic/advantages + weighted flow-matching actor surrogate.
+extends: cube_mlp_matched.yaml
+experiment:
+  output_dir: runs/cube_diffusion_matched
+model:
+  target: flow_rl.models:DiffusionChunkPolicy
+  kwargs:
+    hidden_dim: 64
+    num_layers: 2
+    num_heads: 4
+    ff_multiplier: 2
+    time_embed_dim: 32
+    num_inference_steps: 10

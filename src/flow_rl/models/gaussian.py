@@ -23,6 +23,8 @@ class GaussianChunkPolicy(NormalizedObservationModule):
     Reference: https://github.com/seohongpark/ogbench/blob/master/impls/agents/sac.py
     """
 
+    training_objective = "negative_log_likelihood"
+
     def __init__(
         self,
         observation_dim: int,
@@ -93,6 +95,9 @@ class GaussianChunkPolicy(NormalizedObservationModule):
         latent = torch.atanh(bounded)
         log_jacobian = 2 * (math.log(2.0) - latent - F.softplus(-2 * latent))
         return (distribution.log_prob(latent) - log_jacobian).sum(dim=-1)
+
+    def per_sample_loss(self, observations: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
+        return -self.log_prob(observations, actions)
 
     @torch.inference_mode()
     def predict(self, observation: np.ndarray, deterministic: bool = True) -> np.ndarray:

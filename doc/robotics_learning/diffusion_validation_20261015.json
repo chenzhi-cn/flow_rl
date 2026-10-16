@@ -1,0 +1,243 @@
+{
+  "date": "2026-10-15",
+  "tests": {
+    "passed": 124,
+    "includes_real_ogbench_integration": true
+  },
+  "checks": [
+    "ruff check src tests",
+    "ruff format --check src tests",
+    "git diff --check"
+  ],
+  "packages": {
+    "torch": "2.14.0",
+    "ogbench": "1.2.1",
+    "mujoco": "3.14.0"
+  },
+  "legacy_gaussian_checkpoint_loaded": true,
+  "standalone_diffusion_checkpoint_evaluation": {
+    "episodes": 1,
+    "episode_length_mean": 30,
+    "success_rate": 0.0,
+    "return_mean": -30.0
+  },
+  "runs": {
+    "verify_mlp_matched_20261015": {
+      "checkpoint": "runs/verify_mlp_matched_20261015/checkpoint.pt",
+      "step": 30,
+      "data_source": "ogbench",
+      "dataset_transitions": 1000000,
+      "dataset_windows": 997000,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 4,
+      "actor_parameters": 100000,
+      "actor_trainable_parameters": 100000,
+      "critic_parameters": 200000,
+      "critic_trainable_parameters": 200000,
+      "target_critic_parameters": 200000,
+      "total_trainable_parameters": 300000,
+      "total_parameters_with_targets": 500000,
+      "actor_build": {
+        "version": 1,
+        "target": "flow_rl.models:GaussianChunkPolicy",
+        "parameter_budget": 100000,
+        "resolved_kwargs": {
+          "hidden_dims": [
+            284,
+            284
+          ],
+          "state_dependent_std": true
+        },
+        "dense_parameters": 100576,
+        "total_parameters": 100000,
+        "sparse_layers": [
+          {
+            "name": "net.2",
+            "weight_count": 80189,
+            "dense_weight_count": 80656
+          },
+          {
+            "name": "net.4",
+            "weight_count": 11296,
+            "dense_weight_count": 11360
+          },
+          {
+            "name": "net.0",
+            "weight_count": 7907,
+            "dense_weight_count": 7952
+          }
+        ]
+      },
+      "critic_build": {
+        "version": 1,
+        "target": "flow_rl.models:EnsembleQ",
+        "parameter_budget": 200000,
+        "resolved_kwargs": {
+          "hidden_dims": [
+            292,
+            292
+          ],
+          "num_qs": 2,
+          "layer_norm": false
+        },
+        "dense_parameters": 200314,
+        "total_parameters": 200000,
+        "sparse_layers": [
+          {
+            "name": "qs.0.2",
+            "weight_count": 85129,
+            "dense_weight_count": 85264
+          },
+          {
+            "name": "qs.1.2",
+            "weight_count": 85129,
+            "dense_weight_count": 85264
+          },
+          {
+            "name": "qs.0.0",
+            "weight_count": 13994,
+            "dense_weight_count": 14016
+          },
+          {
+            "name": "qs.1.0",
+            "weight_count": 13994,
+            "dense_weight_count": 14016
+          }
+        ]
+      },
+      "actor_objective": "negative_log_likelihood",
+      "device": "cpu",
+      "episodes": 1,
+      "return_mean": -30.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 30.0,
+      "control_call_ms_mean": 0.0835263616560648,
+      "control_call_ms_p95": 0.14852094172965732,
+      "last_training_metrics": {
+        "step": 30,
+        "elapsed_seconds": 0.08820054196985438,
+        "actor_loss": 50.513641357421875,
+        "critic_loss": 7.439357757568359,
+        "q_mean": -1.298891544342041,
+        "target_q_mean": -3.903883457183838,
+        "advantage_mean": 0.043669119477272034,
+        "weight_mean": 1.0619099140167236,
+        "weight_max": 1.5145018100738525,
+        "log_prob_mean": -52.42359924316406
+      }
+    },
+    "verify_diffusion_matched_20261015": {
+      "checkpoint": "runs/verify_diffusion_matched_20261015/checkpoint.pt",
+      "step": 30,
+      "data_source": "ogbench",
+      "dataset_transitions": 1000000,
+      "dataset_windows": 997000,
+      "observation_dim": 28,
+      "action_dim": 5,
+      "chunk_size": 4,
+      "actor_parameters": 100000,
+      "actor_trainable_parameters": 100000,
+      "critic_parameters": 200000,
+      "critic_trainable_parameters": 200000,
+      "target_critic_parameters": 200000,
+      "total_trainable_parameters": 300000,
+      "total_parameters_with_targets": 500000,
+      "actor_build": {
+        "version": 1,
+        "target": "flow_rl.models:DiffusionChunkPolicy",
+        "parameter_budget": 100000,
+        "resolved_kwargs": {
+          "hidden_dim": 68,
+          "num_layers": 2,
+          "num_heads": 4,
+          "ff_multiplier": 2,
+          "time_embed_dim": 32,
+          "num_inference_steps": 10
+        },
+        "dense_parameters": 107649,
+        "total_parameters": 100000,
+        "sparse_layers": [
+          {
+            "name": "blocks.0.ffn.0",
+            "weight_count": 7335,
+            "dense_weight_count": 9248
+          },
+          {
+            "name": "blocks.0.ffn.2",
+            "weight_count": 7336,
+            "dense_weight_count": 9248
+          },
+          {
+            "name": "blocks.1.ffn.0",
+            "weight_count": 7336,
+            "dense_weight_count": 9248
+          },
+          {
+            "name": "blocks.1.ffn.2",
+            "weight_count": 7336,
+            "dense_weight_count": 9248
+          }
+        ]
+      },
+      "critic_build": {
+        "version": 1,
+        "target": "flow_rl.models:EnsembleQ",
+        "parameter_budget": 200000,
+        "resolved_kwargs": {
+          "hidden_dims": [
+            292,
+            292
+          ],
+          "num_qs": 2,
+          "layer_norm": false
+        },
+        "dense_parameters": 200314,
+        "total_parameters": 200000,
+        "sparse_layers": [
+          {
+            "name": "qs.0.2",
+            "weight_count": 85129,
+            "dense_weight_count": 85264
+          },
+          {
+            "name": "qs.1.2",
+            "weight_count": 85129,
+            "dense_weight_count": 85264
+          },
+          {
+            "name": "qs.0.0",
+            "weight_count": 13994,
+            "dense_weight_count": 14016
+          },
+          {
+            "name": "qs.1.0",
+            "weight_count": 13994,
+            "dense_weight_count": 14016
+          }
+        ]
+      },
+      "actor_objective": "flow_matching",
+      "device": "cpu",
+      "episodes": 1,
+      "return_mean": -30.0,
+      "success_rate": 0.0,
+      "episode_length_mean": 30.0,
+      "control_call_ms_mean": 1.2174916667087625,
+      "control_call_ms_p95": 2.5183891149936244,
+      "last_training_metrics": {
+        "step": 30,
+        "elapsed_seconds": 0.5619004999753088,
+        "actor_loss": 0.8714016675949097,
+        "critic_loss": 7.433925628662109,
+        "q_mean": -1.3339065313339233,
+        "target_q_mean": -3.9465060234069824,
+        "advantage_mean": -0.027618519961833954,
+        "weight_mean": 1.0060441493988037,
+        "weight_max": 1.5469168424606323,
+        "flow_matching_loss_mean": 0.8774942755699158
+      }
+    }
+  },
+  "scope": "Short functional verification and exact parameter matching, not learned task performance."
+}

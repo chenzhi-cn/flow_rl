@@ -1,0 +1,9 @@
+extends: cube_diffusion_matched.yaml
+experiment:
+  output_dir: runs/cube_diffusion_bc
+algorithm:
+  target: flow_rl.algorithms:BC
+  kwargs:
+    actor_lr: 0.0003
+training:
+  mode: supervised
